@@ -17,39 +17,31 @@ import pygame
 # Da diese sich nicht ändert, bleibt die Referenz über die Laufzeit statisch.
 #
 ###
-class Automaton():
+class Automaton:
     def __init__(self, screen):
-        self.cells = []
+        self.cells = {}
+        self.create_grid(screen)
 
-        # Zellen wissen nicht wo sie im Grid sind, sie bekommen ein pygame
-        # Rect übergeben, welches sie entsprechend einfärben. Das Rect-Objekt kennt
-        # seine Position auf dem Screen.
+    def create_grid(self, screen):
+        cell_size = 500 / 10
         for y in range(10):
-            row = []
             for x in range(10):
-                cellSize = 500/10
-                rect = pygame.Rect(x*cellSize,y*cellSize,cellSize, cellSize)
-
-                row.append(Cell(screen, rect, self.generateRandomCell()))
-            self.cells.append(row)
-
+                rect = pygame.Rect(x * cell_size, y * cell_size, cell_size, cell_size)
+                self.cells[(x, y)] = Cell(screen, rect, self.generateRandomCell())
+        print(self.cells)
+        
         # Nachdem alle Zellen erzeugt wurden, können Referenzen zu den Nachbarn hergestellt werden
         # Jede Zelle bekommt eine Liste mit Referenzen zu ihren 8 Nachbarn überreicht, die sie speichert
-        for y in range(10):
-            for x in range(10):
-                cell = self.getValidCell(x,y)
-
-                neighbors = []
-                neighbors.append(self.getValidCell(x-1,y-1))
-                neighbors.append(self.getValidCell(x-1,y))
-                neighbors.append(self.getValidCell(x-1,y+1))
-                neighbors.append(self.getValidCell(x,y-1))
-                neighbors.append(self.getValidCell(x,y+1))
-                neighbors.append(self.getValidCell(x+1,y-1))
-                neighbors.append(self.getValidCell(x+1,y))
-                neighbors.append(self.getValidCell(x+1,y+1))
-
-                cell.setNeighbors(neighbors)
+        for check_cell in self.cells:
+            x, y = check_cell
+            neighbors = []
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dy == 0 and dx == 0:
+                        continue
+                    coordinates = ((x + dx) % 10, (y + dy) % 10)
+                    neighbors.append(self.cells.get(coordinates))
+            self.cells[check_cell].setNeighbors(neighbors)
         
         self.lastUpdate = 0
         
@@ -57,26 +49,17 @@ class Automaton():
         return randint(0,1)
     
     def getValidCell(self, x, y):
-        if (x < 0):
-            x = 9
-        if (x > 9):
-            x = 0
-        
-        if (y < 0):
-            y = 9
-        if (y > 9):
-            y = 0
-        
-        return self.cells[y][x]
+        x = x % 10
+        y = y % 10
+        return self.cells.get((x, y))
     
     # Jede Zelle zeichnet sich selbst, danach werden alle Zellen ihren aktuellen Stand
     # in den oldState übertragen. So wird eine weitere Schleife durch alle Zellen einge-
     # spart.
     def draw(self):
-        for row in self.cells:
-            for cell in row:
-                cell.draw()
-                cell.postUpdate()
+        for coordinates in self.cells:
+            self.cells[coordinates].draw()
+            self.cells[coordinates].postUpdate()
     
     # Zählt die Zeit seit dem letzten Update des Automaten. Sind mehr als
     # 1000ms vergangen, so werden alle Zellen geupdatet.
@@ -85,7 +68,6 @@ class Automaton():
         if (self.lastUpdate > 1000):
             self.lastUpdate = 0
 
-            for row in self.cells:
-                for cell in row:
-                    cell.update()
+            for coordinates in self.cells:
+                self.cells[coordinates].update()
 
